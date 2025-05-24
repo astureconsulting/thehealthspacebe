@@ -6,7 +6,7 @@ import re
 import os
 app = Flask(__name__)
 CORS(app)
-port = int(os.environ.get('PORT', 8080))
+port = int(os.environ.get('PORT', 8000))
 client = openai.OpenAI(
     api_key="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",
     base_url="https://api.groq.com/openai/v1"
@@ -184,19 +184,19 @@ def handle_prompt():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/')
-def serve_react():
-    try:
-        return send_from_directory('../frontend/build', 'index.html')
-    except:
-        return jsonify({"message": "Lion Pro Dev API is running!", "status": "success"})
+# @app.route('/')
+# def serve_react():
+#     try:
+#         return send_from_directory('../frontend/build', 'index.html')
+#     except:
+#         return jsonify({"message": "Lion Pro Dev API is running!", "status": "success"})
 
-@app.route('/<path:path>')
-def serve_static_files(path):
-    try:
-        return send_from_directory('../frontend/build', path)
-    except:
-        return send_from_directory('../frontend/build', 'index.html')
+# @app.route('/<path:path>')
+# def serve_static_files(path):
+#     try:
+#         return send_from_directory('../frontend/build', path)
+#     except:
+#         return send_from_directory('../frontend/build', 'index.html')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=port, debug=False)
