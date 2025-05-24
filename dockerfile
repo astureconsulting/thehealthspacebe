@@ -1,16 +1,20 @@
+# Use Python 3.11 slim image
 FROM python:3.11-slim
 
-
+# Set working directory
 WORKDIR /app
 
+# Copy requirements first for better caching
 COPY requirements.txt .
+
+# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy the rest of the application
 COPY . .
 
-ENV PORT=8000
-ENV GROQ_API_KEY="your-key-here"
+# Expose the port
+EXPOSE 3050
 
-EXPOSE $PORT
-
-CMD ["gunicorn", "--worker-tmp-dir", "/dev/shm", "--bind", "0.0.0.0:$PORT", "--workers", "2", "--threads", "4", "--timeout", "120", "bot:application"]
+# Command to run the application
+CMD ["gunicorn", "--bind", "0.0.0.0:3050", "bot:app"]
