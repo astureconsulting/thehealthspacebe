@@ -6,7 +6,7 @@ import re
 import os
 app = Flask(__name__)
 CORS(app)
-
+port = int(os.environ.get('PORT', 8080))
 client = openai.OpenAI(
     api_key="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",
     base_url="https://api.groq.com/openai/v1"
@@ -199,6 +199,4 @@ def serve_static_files(path):
         return send_from_directory('../frontend/build', 'index.html')
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 8080))
-
     app.run(host='0.0.0.0', port=port, debug=False)
