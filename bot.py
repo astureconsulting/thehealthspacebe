@@ -11,7 +11,7 @@ client = openai.OpenAI(
     api_key="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",
     base_url="https://api.groq.com/openai/v1"
 )
-application = app
+
 ALMASSA_INFO_AR = """
 شركة المساعي هي شركة رائدة في مجال التكنولوجيا والحلول الرقمية المتكاملة. 
 
@@ -199,4 +199,4 @@ def handle_prompt():
 #         return send_from_directory('../frontend/build', 'index.html')
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
+    app.run(host='0.0.0.0', port=port, debug=False)
