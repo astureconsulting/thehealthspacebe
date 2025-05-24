@@ -1,1 +1,1 @@
-web: gunicorn --bind 0.0.0.0:$PORT bot:app
+web: gunicorn --worker-tmp-dir /dev/shm --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120 bot:application

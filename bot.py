@@ -11,7 +11,7 @@ client = openai.OpenAI(
     api_key="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",
     base_url="https://api.groq.com/openai/v1"
 )
-
+application = app
 ALMASSA_INFO_AR = """
 شركة المساعي هي شركة رائدة في مجال التكنولوجيا والحلول الرقمية المتكاملة. 
 
