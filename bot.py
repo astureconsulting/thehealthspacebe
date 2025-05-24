@@ -1,9 +1,9 @@
-from flask import Flask, request, jsonify, Response, send_from_directory
+from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 import time
 import openai
+import re
 import os
-
 app = Flask(__name__)
 CORS(app)
 
@@ -12,75 +12,131 @@ client = openai.OpenAI(
     base_url="https://api.groq.com/openai/v1"
 )
 
-LION_PRO_DEV_INFO = """
-EST in 2012, Lion Pro Dev is the brainchild of Lion MGT LLC, established with the vision of transforming the digital experience for businesses. From our humble beginnings, we set out on a journey to redefine standards. Located at 5195 Hampsted VCW #232, New Albany, OH 43054, not just a company, it's a partner invested in seeing your brand not only survive but thrive in the digital wilderness.
+ALMASSA_INFO_AR = """
+شركة المساعي هي شركة رائدة في مجال التكنولوجيا والحلول الرقمية المتكاملة. 
 
-From the onset, Lion Pro Dev aimed not just to provide services but to become strategic partners in the success stories of our clients. It operates as a Doing Business As (DBA) entity under Lion MGT LLC. This structure ensures a solid foundation, financial stability, and a commitment to upholding the highest standards of business practices.
-Lion Pro Dev is a leading software development company specializing in:
-1. Custom Software Development
-2. Web Design & Development
-3. Mobile Application Development
-4. Cloud Solutions
-5. Digital Marketing
+العنوان: 
+الرياض، المملكة العربية السعودية
+الحي الدبلوماسي، شارع الأمير سلطان
+برج المساعي، الطابق 12
 
-We provide high-quality, tailor-made solutions to help businesses grow, utilizing cutting-edge technologies.
-Contact us at:
-- Email: office@lionprodev.com
+خدماتنا التفصيلية:
+1. تطوير التطبيقات:
+   - تطبيقات الويب المتكاملة
+   - تطبيقات الجوال 
+   - أنظمة إدارة علاقات العملاء 
+   - أنظمة تخطيط موارد المؤسسات 
 
-Our team of experts is here to help you build your dream project!
+2. التجارة الإلكترونية:
+   - متاجر إلكترونية متكاملة
+   - حلول الدفع الإلكتروني
+   - أنظمة إدارة المخزون
+   - تكامل مع منصات التسويق الرقمي
 
-Core Services:
-1. Web Development: Custom websites, eCommerce platforms, and responsive web design tailored to your business needs.
-   - Service offerings: Full stack HTML, CSS, JavaScript, WordPress, PHP, react, flask, next and more.
+3. تصميم وتجربة المستخدم:
+   - تصميم واجهات المستخدم 
+   - تحسين تجربة المستخدم 
+   - تصميم الهوية البصرية
+   - تصميم الشعارات والمواد التسويقية
 
-2. Mobile App Development: Design and development of intuitive, high-performance mobile apps for iOS and Android platforms.
-   - Service offerings: Native iOS/Android apps, Hybrid apps, App maintenance.
+4. البنية التحتية والسحابة:
+   - حلول الاستضافة السحابية
+   - إدارة الخوادم والسيرفرات
+   - حلول النسخ الاحتياطي
+   - البنية التحتية كخدمة 
 
-3. AI & ML Solutions: Leveraging Artificial Intelligence and Machine Learning to automate processes and improve decision-making.
-   - Service offerings: Predictive analytics, data-driven decision-making tools, AI-powered chatbots.
+5. الأمن السيبراني:
+   - اختبار الاختراق
+   - حلول الحماية من الاختراقات
+   - أنظمة كشف التسلل
+   - تدقيق أمن المعلومات
 
-4. Generative AI: Innovative AI tools and technologies that assist in content creation, design, and automation.
-   - Service offerings: Generative design, content generation, automation workflows.
+6. الذكاء الاصطناعي والبيانات:
+   - تحليلات الأعمال
+   - تعلم الآلة
+   - معالجة اللغات الطبيعية
+   - حلول الرؤية الحاسوبية
 
-5. Graphic Design & UI/UX: Creative and unique graphic designs for branding, marketing materials, and digital assets.
-   - Service offerings: Logo design, brochures, social media visuals, digital marketing campaigns.
+عملاؤنا يشملون:
+- الوزارات والهيئات الحكومية
+- الشركات الكبرى والمتوسطة
+- المؤسسات المالية والبنوك
+- المؤسسات التعليمية
+- شركات التجزئة الكبرى
 
-6. Marketing Services: Full-stack digital marketing strategies to help you reach and engage your target audience effectively.
-   - Service offerings: SEO, content marketing, social media strategy, email marketing.
-
-7. Shopify Development: Expert Shopify store setup, customization, and optimization for better eCommerce success.
-   - Service offerings: Custom Shopify themes, Shopify SEO, Shopify integrations.
-
-8. UI/UX Design: Crafting seamless, user-centered designs that ensure delightful experiences for web and mobile apps.
-   - Service offerings: User Interface (UI) design, User Experience (UX) design, wireframing, prototyping, and user testing.
-
-Industries We Serve:
-- eCommerce
-- Healthcare
-- Finance
-- Education
-- Retail
-- Real Estate
-- Hospitality and much more
-
-Why Choose Us:
-- Experience: With years of experience, we bring expert knowledge to every project.
-- Customer-Centric: We work closely with you to understand your needs and deliver the best possible solutions.
-- Cutting-Edge Technology: We use the latest technologies and tools to keep your business ahead of the competition.
-- Global Reach: We serve businesses around the world, delivering results that make an impact.
-
-To schedule the meeting or book slots contact us via our email or website.
-Contact Information:
-
-- Email: office@lionprodev.com
-- Website: https://lionprodev.com/
-
-
-
-Philip Cutting, a passionate Web, Mobile Apps Developer, AI Engineer, and the visionary (CTO & Co-founder) of Lion Pro Dev, has been steering the New Albany, Ohio-based software company towards innovation and excellence since 2012. Specializing in developing web and mobile applications, his career is dedicated to transforming visionary ideas into tangible, digital solutions that drive success.
-
-With a comprehensive suite of services, the focus is on crafting bespoke solutions that not only meet but exceed clients' digital aspirations. The approach is always tailored and results-driven, aiming to craft engaging mobile apps and effective web solutions that enhance conversion and engagement.
+تواصل معنا: 
+البريد الإلكتروني: info@almassait.com
+الهاتف:  966125124965   
 """
+
+ALMASSA_INFO_EN = """
+Almassa is a leading provider of integrated digital technology solutions.
+
+Address:
+Riyadh, Saudi Arabia
+Diplomatic Quarter, Prince Sultan Road
+Almassa Tower, 12th Floor
+
+Our Detailed Services:
+1. Application Development:
+   - Comprehensive web applications
+   - Mobile apps (iOS & Android)
+   - Customer Relationship Management (CRM)
+   - Enterprise Resource Planning (ERP)
+
+2. E-Commerce Solutions:
+   - Complete online stores
+   - Electronic payment solutions
+   - Inventory management systems
+   - Digital marketing platform integration
+
+3. UI/UX Design:
+   - User Interface design
+   - User Experience optimization
+   - Visual identity design
+   - Logo and marketing material design
+
+4. Cloud Infrastructure:
+   - Cloud hosting solutions
+   - Server management
+   - Backup solutions
+   - Infrastructure as a Service (IaaS)
+
+5. Cybersecurity:
+   - Penetration testing
+   - Intrusion protection solutions
+   - Intrusion detection systems
+   - Information security audits
+
+6. AI & Data Solutions:
+   - Business analytics
+   - Machine learning
+   - Natural language processing
+   - Computer vision solutions
+
+Our Client Groups Include:
+- Government ministries and agencies
+- Large and medium enterprises
+- Financial institutions and banks
+- Educational institutions
+- Major retail corporations
+
+Contact Us:
+Email: info@almassait.com
+Phone: +966125124965
+Website: https://almassait.com/
+"""
+
+def detect_language(text):
+    if re.search(r'[\u0600-\u06FF]', text):
+        return "ar"
+    return "en"
+
+def clean_arabic_response(text):
+    # Clean the Arabic response while keeping email and phone intact
+    # Use a non-greedy match to preserve the email and phone numbers
+    cleaned_text = re.sub(r'(?<![a-zA-Z0-9@.\-+])[^\u0600-\u06FF\s@.\-+0-9](?![a-zA-Z0-9@.\-+])', '', text)
+    return cleaned_text
 
 @app.route('/api/prompt', methods=['POST'])
 def handle_prompt():
@@ -90,15 +146,25 @@ def handle_prompt():
     if not prompt:
         return jsonify({"error": "Prompt is required."}), 400
 
+    language = detect_language(prompt)
+
+    if language == "ar":
+        system_message = (
+            f"أنت مساعد مفيد متخصص في {ALMASSA_INFO_AR}. "
+            "يرجى الرد فقط باللغة العربية، ولا تستخدم أي كلمات أو عبارات من لغات أخرى. "
+            "مهم جدًا: يجب عليك ذكر البريد الإلكتروني (info@almassait.com) ورقم الهاتف ( 966125124965+ ) بدون ترجمة أو تعديل، "
+            "أي أن البريد الإلكتروني ورقم الهاتف يجب أن يبقيا مكتوبين بنفس الشكل الإنجليزي كما هما في النص، "
+            "ولا تغيرهما أو تكتبهما بالعربية، باقي الرد يكون عربي فقط."
+        )
+    else:
+        system_message = f"You are a helpful assistant specializing in {ALMASSA_INFO_EN}. Please respond only in English."
+
     try:
         chat_completion = client.chat.completions.create(
-            model="llama3-8b-8192",
-            messages=[
-                {
-                    "role": "system", 
-                    "content": "You are a helpful assistant specializing in " + LION_PRO_DEV_INFO
-                },
-                {"role": "user", "content": prompt}
+            model="llama-3.3-70b-versatile",
+            messages=[ 
+                {"role": "system", "content": system_message}, 
+                {"role": "user", "content": prompt} 
             ],
             stream=True
         )
@@ -106,27 +172,31 @@ def handle_prompt():
         def stream_response():
             for chunk in chat_completion:
                 if chunk.choices[0].delta.content:
-                    yield chunk.choices[0].delta.content
-                    time.sleep(0.01) 
+                    response = chunk.choices[0].delta.content
+                    if language == "ar":
+                        # Clean the Arabic response while keeping email and phone intact
+                        response = clean_arabic_response(response)
+                    yield response
+                    time.sleep(0.01)
 
         return Response(stream_response(), content_type="text/plain")
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/')
-def serve_react():
-    try:
-        return send_from_directory('../frontend/build', 'index.html')
-    except:
-        return jsonify({"message": "Lion Pro Dev API is running!", "status": "success"})
+# @app.route('/')
+# def serve_react():
+#     try:
+#         return send_from_directory('../frontend/build', 'index.html')
+#     except:
+#         return jsonify({"message": "Lion Pro Dev API is running!", "status": "success"})
 
-@app.route('/<path:path>')
-def serve_static_files(path):
-    try:
-        return send_from_directory('../frontend/build', path)
-    except:
-        return send_from_directory('../frontend/build', 'index.html')
+# @app.route('/<path:path>')
+# def serve_static_files(path):
+#     try:
+#         return send_from_directory('../frontend/build', path)
+#     except:
+#         return send_from_directory('../frontend/build', 'index.html')
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
