@@ -4,8 +4,28 @@ import time
 import openai
 import re
 import os
+
 app = Flask(__name__)
-CORS(app)
+
+# Fixed CORS configuration for Railway
+CORS(app, resources={
+    r"/api/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization", "Accept"],
+        "supports_credentials": False
+    }
+})
+
+# Add OPTIONS handler for preflight requests
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        response = Response()
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add('Access-Control-Allow-Headers', "Content-Type,Authorization,Accept")
+        response.headers.add('Access-Control-Allow-Methods', "GET,PUT,POST,DELETE,OPTIONS")
+        return response
 
 client = openai.OpenAI(
     api_key="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",
@@ -134,32 +154,65 @@ def detect_language(text):
 
 def clean_arabic_response(text):
     # Clean the Arabic response while keeping email and phone intact
-    # Use a non-greedy match to preserve the email and phone numbers
     cleaned_text = re.sub(r'(?<![a-zA-Z0-9@.\-+])[^\u0600-\u06FF\s@.\-+0-9](?![a-zA-Z0-9@.\-+])', '', text)
     return cleaned_text
 
-@app.route('/api/prompt', methods=['POST'])
+# Add a health check endpoint
+@app.route('/', methods=['GET'])
+def health_check():
+    return jsonify({
+        "message": "Almassa AI API is running!", 
+        "status": "success",
+        "version": "1.0"
+    })
+
+# Add a test endpoint
+@app.route('/api/test', methods=['GET', 'POST'])
+def test_endpoint():
+    return jsonify({
+        "message": "API test successful",
+        "method": request.method,
+        "timestamp": time.time()
+    })
+
+@app.route('/api/prompt', methods=['POST', 'OPTIONS'])
 def handle_prompt():
-    data = request.get_json()
-    prompt = data.get("prompt", "").strip()
-
-    if not prompt:
-        return jsonify({"error": "Prompt is required."}), 400
-
-    language = detect_language(prompt)
-
-    if language == "ar":
-        system_message = (
-            f"أنت مساعد مفيد متخصص في {ALMASSA_INFO_AR}. "
-            "يرجى الرد فقط باللغة العربية، ولا تستخدم أي كلمات أو عبارات من لغات أخرى. "
-            "مهم جدًا: يجب عليك ذكر البريد الإلكتروني (info@almassait.com) ورقم الهاتف ( 966125124965+ ) بدون ترجمة أو تعديل، "
-            "أي أن البريد الإلكتروني ورقم الهاتف يجب أن يبقيا مكتوبين بنفس الشكل الإنجليزي كما هما في النص، "
-            "ولا تغيرهما أو تكتبهما بالعربية، باقي الرد يكون عربي فقط."
-        )
-    else:
-        system_message = f"You are a helpful assistant specializing in {ALMASSA_INFO_EN}. Please respond only in English."
+    # Handle preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        response = Response()
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add('Access-Control-Allow-Headers', "Content-Type,Authorization,Accept")
+        response.headers.add('Access-Control-Allow-Methods', "GET,PUT,POST,DELETE,OPTIONS")
+        return response
 
     try:
+        # Get JSON data with error handling
+        if not request.is_json:
+            return jsonify({"error": "Content-Type must be application/json"}), 400
+            
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+            
+        prompt = data.get("prompt", "").strip()
+
+        if not prompt:
+            return jsonify({"error": "Prompt is required."}), 400
+
+        language = detect_language(prompt)
+
+        if language == "ar":
+            system_message = (
+                f"أنت مساعد مفيد متخصص في {ALMASSA_INFO_AR}. "
+                "يرجى الرد فقط باللغة العربية، ولا تستخدم أي كلمات أو عبارات من لغات أخرى. "
+                "مهم جدًا: يجب عليك ذكر البريد الإلكتروني (info@almassait.com) ورقم الهاتف ( 966125124965+ ) بدون ترجمة أو تعديل، "
+                "أي أن البريد الإلكتروني ورقم الهاتف يجب أن يبقيا مكتوبين بنفس الشكل الإنجليزي كما هما في النص، "
+                "ولا تغيرهما أو تكتبهما بالعربية، باقي الرد يكون عربي فقط."
+            )
+        else:
+            system_message = f"You are a helpful assistant specializing in {ALMASSA_INFO_EN}. Please respond only in English."
+
+        # Test with non-streaming first
         chat_completion = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[ 
@@ -170,35 +223,37 @@ def handle_prompt():
         )
 
         def stream_response():
-            for chunk in chat_completion:
-                if chunk.choices[0].delta.content:
-                    response = chunk.choices[0].delta.content
-                    if language == "ar":
-                        # Clean the Arabic response while keeping email and phone intact
-                        response = clean_arabic_response(response)
-                    yield response
-                    time.sleep(0.01)
+            try:
+                for chunk in chat_completion:
+                    if chunk.choices and len(chunk.choices) > 0 and chunk.choices[0].delta.content:
+                        response = chunk.choices[0].delta.content
+                        if language == "ar":
+                            response = clean_arabic_response(response)
+                        yield response
+                        time.sleep(0.01)
+            except Exception as e:
+                yield f"Error in streaming: {str(e)}"
 
-        return Response(stream_response(), content_type="text/plain")
+        response = Response(stream_response(), content_type="text/plain")
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization,Accept")
+        response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
+        return response
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"Error in handle_prompt: {str(e)}")  # Server-side logging
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
 
-# @app.route('/')
-# def serve_react():
-#     try:
-#         return send_from_directory('../frontend/build', 'index.html')
-#     except:
-#         return jsonify({"message": "Lion Pro Dev API is running!", "status": "success"})
+# Error handlers
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({"error": "Endpoint not found"}), 404
 
-# @app.route('/<path:path>')
-# def serve_static_files(path):
-#     try:
-#         return send_from_directory('../frontend/build', path)
-#     except:
-#         return send_from_directory('../frontend/build', 'index.html')
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({"error": "Internal server error"}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
-
+    print(f"Starting server on port {port}")
     app.run(host='0.0.0.0', port=port, debug=False)
