@@ -288,7 +288,7 @@ def handle_preflight():
         return response
 
 client = openai.OpenAI(
-    api_key=os.environ.get("GROQ_API_KEY", "YOUR_API_KEY"),
+    api_key="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",
     base_url="https://api.groq.com/openai/v1"
 )
 
