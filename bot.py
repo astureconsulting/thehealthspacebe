@@ -638,13 +638,14 @@ def handle_prompt():
             )
 
         chat_completion = client.chat.completions.create(
-            model="llama-3-70b-8192",
-            messages=[
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": prompt}
-            ],
-            stream=True
-        )
+    model="llama3-70b-8192",  # Correct model name!
+    messages=[
+        {"role": "system", "content": system_message},
+        {"role": "user", "content": prompt}
+    ],
+    stream=True
+)
+
 
         def stream_response():
             try:
