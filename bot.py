@@ -656,9 +656,10 @@ import time
 import openai
 import re
 import os
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__, static_folder='static', static_url_path='')
-app.secret_key = os.environ.get('SECRET_KEY', 'hira-foods-secret-key')  # Needed for session
+app.secret_key = os.environ.get('SECRET_KEY', 'hira-foods-secret-key')
 
 # CORS for API endpoints only (not needed for static files)
 CORS(app, resources={
@@ -669,26 +670,6 @@ CORS(app, resources={
         "supports_credentials": False
     }
 })
-
-@app.before_request
-def handle_preflight():
-    if request.method == "OPTIONS":
-        response = Response()
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        response.headers.add('Access-Control-Allow-Headers', "Content-Type,Authorization,Accept")
-        response.headers.add('Access-Control-Allow-Methods', "GET,PUT,POST,DELETE,OPTIONS")
-        return response
-
-# Use Groq's OpenAI-compatible API with Llama 3.3 Versatile model
-client = openai.OpenAI(
-    api_key="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",
-    base_url="https://api.groq.com/openai/v1"
-)
-
-# --- PREVIOUS SYSTEM PROMPT (for reference/history) ---
-PREVIOUS_SYSTEM_PROMPT = """
-You are Hira, a virtual assistant for Hira Foods. Always answer in a friendly, concise, and informative way. Provide menu suggestions, answer questions about catering, and help users choose the right package. Mention chef stories and customer favorites where relevant. Keep answers short and natural.
-"""
 
 # --- HIRA FOODS INFO (English & Norwegian, with all upgrades) ---
 HIRA_INFO_EN = """
@@ -929,29 +910,213 @@ Allergener & andre notater: 1 Gluten, 2 Skalldyr, 3 Egg, 4 Fisk, 5 Peanøtter, 6
 - Svar som en som jobber på Hira Foods, med varme og ekspertise.
 """
 
+NASHTA_MENU = [
+    {
+        "name": "Tasting Menu for 2",
+        "desc": "Halwa puri, nihari, haleem, 2 naan, 2 puris.",
+        "price": "490 kr",
+        "tag": "For Sharing",
+        "action": "Book Now"
+    },
+    {
+        "name": "Halwa Puri",
+        "desc": "Potato stew, chana, sweet semolina, 1 puri.",
+        "price": "159 kr",
+        "tag": "Classic",
+        "action": "Order Now"
+    },
+    {
+        "name": "Paye",
+        "desc": "Lamb/cow hoof stew, served with naan.",
+        "price": "189 kr",
+        "tag": "",
+        "action": "Order Now"
+    },
+    {
+        "name": "Nihari",
+        "desc": "Beef stew, slow-cooked with spices, served with naan.",
+        "price": "169 kr",
+        "tag": "Customer Favorite",
+        "action": "Order Now"
+    },
+    {
+        "name": "Haleem",
+        "desc": "Lamb & lentil stew, served with naan.",
+        "price": "169 kr",
+        "tag": "",
+        "action": "Order Now"
+    },
+    {
+        "name": "Andha Paratha",
+        "desc": "Omelette with spices, served with paratha.",
+        "price": "109 kr",
+        "tag": "",
+        "action": "Order Now"
+    },
+    {
+        "name": "Aloo Paratha",
+        "desc": "Potato-stuffed paratha, served with mint sauce.",
+        "price": "109 kr",
+        "tag": "",
+        "action": "Order Now"
+    },
+    {
+        "name": "Saag Paratha",
+        "desc": "Greens stew, served with paratha.",
+        "price": "149 kr",
+        "tag": "",
+        "action": "Order Now"
+    },
+    {
+        "name": "Kheer",
+        "desc": "Traditional rice pudding.",
+        "price": "79 kr",
+        "tag": "Dessert",
+        "action": "Add to Order"
+    },
+    {
+        "name": "Desi Chai",
+        "desc": "Spiced Pakistani tea.",
+        "price": "49 kr",
+        "tag": "",
+        "action": "Add to Order"
+    },
+    {
+        "name": "Lassi",
+        "desc": "Sweet, salty, or mango yogurt drink.",
+        "price": "59 kr",
+        "tag": "",
+        "action": "Add to Order"
+    },
+]
+
+# --- File Upload Config ---
+UPLOAD_FOLDER = 'uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf', 'mp3', 'wav', 'ogg'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# --- User Context/Memory Management ---
+def get_user_profile():
+    if 'profile' not in session:
+        session['profile'] = {
+            "name": None,
+            "phone": None,
+            "email": None,
+            "preferences": {},
+            "event": {},
+            "tags": [],
+            "media_uploads": [],
+            "reminder": None,
+            "is_vip": False,
+            "turns": 0
+        }
+    return session['profile']
+
+def update_user_profile(updates):
+    profile = get_user_profile()
+    profile.update(updates)
+    session['profile'] = profile
+
+def add_tag(tag):
+    profile = get_user_profile()
+    if tag not in profile['tags']:
+        profile['tags'].append(tag)
+        session['profile'] = profile
+
+def increment_turn():
+    profile = get_user_profile()
+    profile['turns'] += 1
+    session['profile'] = profile
+
 def detect_language(text):
-    # Detect Norwegian by special characters or common words
     if re.search(r'[æøåÆØÅ]', text) or re.search(r'\b(hei|mat|og|på|til|deg|oss|kontakt)\b', text, re.IGNORECASE):
         return "no"
     return "en"
+
+# --- Groq OpenAI-compatible client (Llama 3.3) ---
+client = openai.OpenAI(
+    api_key=os.environ.get("GROQ_API_KEY", "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"),
+    base_url="https://api.groq.com/openai/v1"
+)
+
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        response = Response()
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add('Access-Control-Allow-Headers', "Content-Type,Authorization,Accept")
+        response.headers.add('Access-Control-Allow-Methods', "GET,PUT,POST,DELETE,OPTIONS")
+        return response
 
 @app.route('/', methods=['GET'])
 def serve_frontend():
     return send_from_directory(app.static_folder, 'index.html')
 
-@app.route('/api/test', methods=['GET', 'POST'])
-def test_endpoint():
-    return jsonify({
-        "message": "API test successful",
-        "method": request.method,
-        "timestamp": time.time()
-    })
-
 @app.route('/api/history', methods=['GET'])
 def get_history():
-    # Return the conversation history for current session
     history = session.get('history', [])
     return jsonify({"history": history})
+
+@app.route('/api/profile', methods=['GET', 'POST'])
+def user_profile():
+    if request.method == 'POST':
+        update_user_profile(request.json)
+    return jsonify(get_user_profile())
+
+@app.route('/api/menu_cards', methods=['GET'])
+def menu_cards():
+    return jsonify({"carousel": NASHTA_MENU})
+
+@app.route('/api/quote', methods=['POST'])
+def instant_quote():
+    data = request.get_json()
+    event_type = data.get("event_type")
+    date = data.get("date")
+    num_people = int(data.get("num_people", 0))
+    food_pref = data.get("food_pref", "")
+    if num_people >= 40:
+        package = "Package 3"
+        price = 309 * num_people
+    elif num_people >= 20:
+        package = "Package 2"
+        price = 259 * num_people
+    else:
+        package = "Package 1"
+        price = 199 * num_people
+    quote = {
+        "package": package,
+        "estimated_cost": f"{price} kr",
+        "details": f"For a party of {num_people} guests with {food_pref} dishes, our {package} is ideal.",
+        "pdf_link": "/static/sample_quote.pdf"
+    }
+    update_user_profile({"event": data, "last_quote": quote})
+    return jsonify(quote)
+
+@app.route('/api/upload', methods=['POST'])
+def upload_media():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+    file = request.files['file']
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        profile = get_user_profile()
+        profile['media_uploads'].append(filename)
+        session['profile'] = profile
+        return jsonify({"message": "File uploaded", "filename": filename})
+    return jsonify({"error": "Invalid file type"}), 400
+
+@app.route('/api/reminder', methods=['POST'])
+def set_reminder():
+    data = request.get_json()
+    reminder_time = data.get("reminder_time")
+    update_user_profile({"reminder": reminder_time})
+    return jsonify({"message": f"Reminder set for {reminder_time}."})
 
 @app.route('/api/prompt', methods=['POST', 'OPTIONS'])
 def handle_prompt():
@@ -965,40 +1130,34 @@ def handle_prompt():
     try:
         if not request.is_json:
             return jsonify({"error": "Content-Type must be application/json"}), 400
-
         data = request.get_json()
-        if not data:
-            return jsonify({"error": "No JSON data provided"}), 400
-
         prompt = data.get("prompt", "").strip()
         if not prompt:
             return jsonify({"error": "Prompt is required."}), 400
 
         language = detect_language(prompt)
+        profile = get_user_profile()
+        increment_turn()
 
-        # Choose system prompt
+        # VIP detection
+        if profile['turns'] >= 10 or profile.get('is_vip'):
+            add_tag("VIP")
+            profile['is_vip'] = True
+
         if language == "no":
-            system_message = (
-                f"{HIRA_INFO_NO}\n"
-                "Svar alltid på norsk. Hold svarene naturlige, varierte og under 6 linjer."
-            )
+            system_message = f"{HIRA_INFO_NO}\nSvar alltid på norsk. Hold svarene naturlige, varierte og under 6 linjer."
         else:
-            system_message = (
-                f"{HIRA_INFO_EN}\n"
-                "Always reply in natural, varied, conversational English. Keep responses under 6 lines."
-            )
+            system_message = f"{HIRA_INFO_EN}\nAlways reply in natural, varied, conversational English. Keep responses under 6 lines."
 
-        # Maintain conversation history in session
         history = session.get('history', [])
         history.append({"role": "user", "content": prompt})
-        session['history'] = history[-20:]  # Keep last 20 messages
+        session['history'] = history[-20:]
 
-        # Build message list for model (system prompt + history)
         messages = [{"role": "system", "content": system_message}]
-        for msg in history[-10:]:  # Last 10 user messages
+        messages += [{"role": "system", "content": f"User profile: {profile}"}]
+        for msg in history[-10:]:
             messages.append(msg)
 
-        # Use Groq's Llama 3.3 Versatile model
         chat_completion = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=messages,
@@ -1009,8 +1168,7 @@ def handle_prompt():
             try:
                 for chunk in chat_completion:
                     if chunk.choices and len(chunk.choices) > 0 and chunk.choices[0].delta.content:
-                        response = chunk.choices[0].delta.content
-                        yield response
+                        yield chunk.choices[0].delta.content
                         time.sleep(0.01)
             except Exception as e:
                 yield f"Error in streaming: {str(e)}"
@@ -1019,21 +1177,25 @@ def handle_prompt():
         response.headers.add("Access-Control-Allow-Origin", "*")
         response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization,Accept")
         response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
-
-        # Save bot response to history for context (optional)
-        # Uncomment if you want to save bot replies as well
-        # history.append({"role": "assistant", "content": full_bot_reply})
-        # session['history'] = history[-20:]
-
         return response
 
     except Exception as e:
         print(f"Error in handle_prompt: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
+@app.route('/api/lead_capture', methods=['POST'])
+def lead_capture():
+    data = request.get_json()
+    name = data.get("name")
+    phone = data.get("phone")
+    email = data.get("email")
+    update_user_profile({"name": name, "phone": phone, "email": email})
+    add_tag("lead")
+    return jsonify({"message": "Lead info saved. We'll be in touch soon!"})
+
 @app.route('/api/system_prompt', methods=['GET'])
 def get_previous_system_prompt():
-    return jsonify({"previous_system_prompt": PREVIOUS_SYSTEM_PROMPT})
+    return jsonify({"previous_system_prompt": HIRA_INFO_EN})
 
 @app.errorhandler(404)
 def not_found(error):
