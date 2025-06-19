@@ -1236,7 +1236,7 @@ def handle_preflight():
 
 # Use Groq's OpenAI-compatible API with Llama 3.3 Versatile model
 client = openai.OpenAI(
-    api_key="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",
+    api_key="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",
     base_url="https://api.groq.com/openai/v1"
 )
 
