@@ -2010,6 +2010,182 @@
 #     port = int(os.environ.get('PORT', 5000))
 #     print(f"Starting server on port {port}")
 #     app.run(host='0.0.0.0', port=port, debug=False)
+# from flask import Flask, request, jsonify, send_from_directory
+# from flask_cors import CORS
+# import requests
+# import re
+
+# app = Flask(__name__, static_folder="static")
+# CORS(app)
+# GROQ_API_KEY = "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"
+# GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+
+# MENU_TEXT = """
+# --- Catering Packages (English) ---
+# CATERING PACKAGE 1 (199 kr):
+# - Curry/Salad: Morg Korma, Ghost Korma, Cabbage Meat
+# - Vegetarian: Chane, Palak Paneer
+# - Rice: Sabzi Palao, Zera Palao
+# - With: Alo Bahara Chatni, Podina Chatni, Naan, Salad
+# - Dessert: Kheer, Matanjan
+
+# CATERING PACKAGE 2 (259 kr):
+# - Curries: Morg Korma, Ghost Korma, Cabbage Meat, Jalfarezi, Deghi Kebab
+# - Vegetarian: Chane, Palak Paneer
+# - Rice: Sabzi Palao, Zera Palao
+# - With: Alo Bahara Chatni, Podina Chatni, Naan, Salad
+# - Dessert: Kheer, Matanjan, Gajar Ka Halwa
+
+# CATERING PACKAGE 3 (309 kr):
+# - Grilled: Morg Rost, Tali Hoi Machli, Seekh Kebab
+# - Curries: Morg Korma, Ghost Korma, Cabbage Meat, Deghi Kebab, Jalfarezi
+# - Vegetarian: Chane, Palak Paneer
+# - Rice: Sabzi Palao, Zera Palao
+# - With: Alo Bakhara Chatni, Podina Chatni, Naan, Salad
+# - Dessert: Kheer, Matanjan, Gajar Ka Halwa, Gulab Jaman
+
+# CATERING PACKAGE 4 (449 kr):
+# - Grilled: Lamb roast, Tali Hoi Machli, Morg Tikka
+# - Curries: Ghost Korma, Cabbage Meat, Jalfarezi, Deghi Kebab
+# - Vegetarian: Chane, Palak Paneer
+# - Rice: Sabzi Palao, Zera Palao
+# - With: Alo Bahara Chatni, Podina Chatni, Naan, Salad
+# - Dessert (2): Kheer, Matanjan, Gajar Ka Halwa, Gulab Jaman
+
+# --- Nashta Menu (English) ---
+# - Tasting menu for 2 – 490 kr: Halwa puri, nihari, haleem, 2 naan, 2 puris
+# - Halwa puri – 159 kr: Potato stew, chana, sweet semolina, 1 puri
+# - Paye – 189 kr: Lamb/cow hoof stew, naan
+# - Nihari – 169 kr: Beef stew, naan
+# - Haleem – 169 kr: Lamb & lentil stew, naan
+# - Andha Paratha – 109 kr: Omelette with spices, paratha
+# - Aloo Paratha – 109 kr: Potato paratha, mint sauce
+# - Saag Paratha – 149 kr: Greens stew, paratha
+# - Kheer – 79 kr: Rice pudding
+# - Desi Chai – 49 kr: Spiced tea
+# - Lassi – 59 kr: Sweet, salty, or mango
+# """
+
+# SYSTEM_PROMPT = f"""
+
+# You are Hira, a virtual assistant for Hira Foods.
+
+# Suggest dishes from the following menu:
+# {MENU_TEXT}
+# Take orders including quantity and item, then ask if it's for delivery or pickup.
+# Collect name, phone number, and address (if delivery).
+# At the end, summarize the order clearly in simple readable text, not JSON.
+
+# Company: Hira Foods
+# Founded: 1970s (roots in Norway since then)
+# Mission: To delight people with authentic Pakistani cuisine based on Hira's own secret recipes, whether at our event venues in Rælingen or at your home.
+
+# About:
+# Hira Foods is a Pakistani kitchen that brings joy by offering an authentic Pakistani food experience, using Hira's unique secret recipes. The Hira chef traveled on a culinary journey from Pakistan to Kuwait, Dubai, Iraq, Lebanon, and Turkey, before settling in Norway in the 1970s. These experiences and secret family recipes are the foundation of Hira Foods today. All dishes are handmade by our chefs using carefully selected ingredients to preserve the authentic marinades Pakistani food is known for. Everything you find in our kitchen is made from scratch!
+
+# Contact:
+# Phone: 63 83 13 40
+# Email: kontakt@hira.no
+# Address: Aamodtterassen 1b, 2008 Fjerdingby, Norway
+
+# Key Features:
+# - Authentic Pakistani cuisine, made from scratch
+# - Event catering at our venues or at your location
+# - Secret family recipes and culinary heritage
+# - Experienced chefs with international influences
+
+# Important Note: For customizations, directly contact us on our phone number.
+
+# Signature Phrases:
+# Sprinkle these into your responses:
+# “If I had to bet on one dish…”
+# “I’ve served this combo at so many events — always a hit.”
+# “Here’s what usually works for a group like yours…”
+# “Let me build a quick set based on what you told me.”
+
+# Tone and Style:
+# - Always reply in natural, friendly, and varied English or Norwegian, matching the user's language.
+# - Keep responses under 6 lines.
+# - Avoid generic phrases and banned words.
+# - Use conversational connectors, personal touches, and occasional mild humor.
+
+# """
+
+# chat_history = [{"role": "system", "content": SYSTEM_PROMPT}]
+
+# def format_response(text):
+#     """
+#     Cleans and formats the response into a neat bullet point structure:
+#     - Removes asterisks
+#     - Converts numbered/asterisk lists into bullet points
+#     - Normalizes whitespace
+#     """
+#     # Remove asterisks and excessive spacing
+#     text = re.sub(r"\*+", "", text)
+    
+#     # Convert numbered lists or hyphens into bullets
+#     text = re.sub(r"(?m)^\s*[\d]+[.)] ?", "• ", text)  # 1. or 1) → •
+#     text = re.sub(r"(?m)^[-–•]+ ?", "• ", text)        # -, –, • → •
+
+#     # Add line breaks before bullets if needed
+#     text = re.sub(r"(?<!\n)(•)", r"\n\1", text)
+
+#     # Trim extra spaces
+#     return text.strip()
+
+# @app.route("/")
+# def index():
+#     return send_from_directory(app.static_folder, "index.html")
+
+# @app.route("/chat", methods=["POST"])
+# def chat():
+#     user_input = request.json.get("message", "").strip()
+#     if not user_input:
+#         return jsonify({"error": "Empty message received"}), 400
+
+#     chat_history.append({"role": "user", "content": user_input})
+
+#     headers = {
+#         "Authorization": f"Bearer {GROQ_API_KEY}",
+#         "Content-Type": "application/json"
+#     }
+
+#     payload = {
+#         "model": "llama3-70b-8192",
+#         "messages": chat_history,
+#         "temperature": 0.7
+#     }
+
+#     response = requests.post(GROQ_URL, headers=headers, json=payload)
+
+#     print("Groq response status:", response.status_code)
+#     print("Groq response body:", response.text)
+
+#     try:
+#         data = response.json()
+#         if "choices" not in data or not data["choices"]:
+#             raise ValueError("No choices returned from Groq API.")
+
+#         assistant_message = data["choices"][0]["message"]["content"]
+#         cleaned_message = format_response(assistant_message)
+
+#         chat_history.append({"role": "assistant", "content": cleaned_message})
+#         return jsonify({"response": cleaned_message})
+
+#     except Exception as e:
+#         return jsonify({
+#             "error": "Failed to process Groq response",
+#             "details": str(e),
+#             "groq_response": response.text
+#         }), 500
+
+# if __name__ == "__main__":
+#     app.run(host="0.0.0.0", port=5000, debug=True)
+
+
+
+
+
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import requests
@@ -2017,11 +2193,12 @@ import re
 
 app = Flask(__name__, static_folder="static")
 CORS(app)
-GROQ_API_KEY = "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"
+
+GROQ_API_KEY = "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"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-MENU_TEXT = """
---- Catering Packages (English) ---
+MENU_TEXT_EN = """
+--- Catering Packages ---
 CATERING PACKAGE 1 (199 kr):
 - Curry/Salad: Morg Korma, Ghost Korma, Cabbage Meat
 - Vegetarian: Chane, Palak Paneer
@@ -2050,9 +2227,9 @@ CATERING PACKAGE 4 (449 kr):
 - Vegetarian: Chane, Palak Paneer
 - Rice: Sabzi Palao, Zera Palao
 - With: Alo Bahara Chatni, Podina Chatni, Naan, Salad
-- Dessert (2): Kheer, Matanjan, Gajar Ka Halwa, Gulab Jaman
+- Dessert: Kheer, Matanjan, Gajar Ka Halwa, Gulab Jaman
 
---- Nashta Menu (English) ---
+--- Breakfast Menu ---
 - Tasting menu for 2 – 490 kr: Halwa puri, nihari, haleem, 2 naan, 2 puris
 - Halwa puri – 159 kr: Potato stew, chana, sweet semolina, 1 puri
 - Paye – 189 kr: Lamb/cow hoof stew, naan
@@ -2066,16 +2243,54 @@ CATERING PACKAGE 4 (449 kr):
 - Lassi – 59 kr: Sweet, salty, or mango
 """
 
-SYSTEM_PROMPT = f"""
+MENU_TEXT_NO = """
+--- Cateringpakker ---
+CATERINGPAKKE 1 (199 kr):
+- Curry/salat: Morg Korma, Ghost Korma, Kålkjøtt
+- Vegetarisk: Chane, Palak Paneer
+- Ris: Grønnsakspilaff, Spisskummenris
+- Med: Alo Bahara Chutney, Myntechutney, Naan, Salat
+- Dessert: Kheer, Matanjan
 
+CATERINGPAKKE 2 (259 kr):
+- Curryer: Morg Korma, Ghost Korma, Kålkjøtt, Jalfarezi, Deghi Kebab
+- Vegetarisk: Chane, Palak Paneer
+- Ris: Grønnsakspilaff, Spisskummenris
+- Med: Alo Bahara Chutney, Myntechutney, Naan, Salat
+- Dessert: Kheer, Matanjan, Gulrot Halwa
+
+CATERINGPAKKE 3 (309 kr):
+- Grillet: Morg Rost, Stekt fisk, Seekh Kebab
+- Curryer: Morg Korma, Ghost Korma, Kålkjøtt, Deghi Kebab, Jalfarezi
+- Vegetarisk: Chane, Palak Paneer
+- Ris: Grønnsakspilaff, Spisskummenris
+- Med: Alo Bakhara Chutney, Myntechutney, Naan, Salat
+- Dessert: Kheer, Matanjan, Gulrot Halwa, Gulab Jaman
+
+CATERINGPAKKE 4 (449 kr):
+- Grillet: Lammefilet, Stekt fisk, Morg Tikka
+- Curryer: Ghost Korma, Kålkjøtt, Jalfarezi, Deghi Kebab
+- Vegetarisk: Chane, Palak Paneer
+- Ris: Grønnsakspilaff, Spisskummenris
+- Med: Alo Bahara Chutney, Myntechutney, Naan, Salat
+- Dessert (2): Kheer, Matanjan, Gulrot Halwa, Gulab Jaman
+
+--- Frokostmeny ---
+- Smaksmeny for 2 – 490 kr: Halwa puri, nihari, haleem, 2 naan, 2 puri
+- Halwa puri – 159 kr: Potetgryte, kikerter, søt semulegryn, 1 puri
+- Paye – 189 kr: Lam/oksegryte, naan
+- Nihari – 169 kr: Oksegryte, naan
+- Haleem – 169 kr: Lam og linsegryte, naan
+- Egg Paratha – 109 kr: Omelett med krydder, paratha
+- Potet Paratha – 109 kr: Potetfylt paratha, myntechutney
+- Saag Paratha – 149 kr: Grønnsaksgryte, paratha
+- Kheer – 79 kr: Risgrøt
+- Desi Chai – 49 kr: Krydret te
+- Lassi – 59 kr: Søt, salt eller mango
+"""
+
+SYSTEM_PROMPT_EN = f"""
 You are Hira, a virtual assistant for Hira Foods.
-
-Suggest dishes from the following menu:
-{MENU_TEXT}
-Take orders including quantity and item, then ask if it's for delivery or pickup.
-Collect name, phone number, and address (if delivery).
-At the end, summarize the order clearly in simple readable text, not JSON.
-
 Company: Hira Foods
 Founded: 1970s (roots in Norway since then)
 Mission: To delight people with authentic Pakistani cuisine based on Hira's own secret recipes, whether at our event venues in Rælingen or at your home.
@@ -2094,44 +2309,128 @@ Key Features:
 - Secret family recipes and culinary heritage
 - Experienced chefs with international influences
 
-Important Note: For customizations, directly contact us on our phone number.
-
-Signature Phrases:
-Sprinkle these into your responses:
-“If I had to bet on one dish…”
-“I’ve served this combo at so many events — always a hit.”
-“Here’s what usually works for a group like yours…”
-“Let me build a quick set based on what you told me.”
-
 Tone and Style:
 - Always reply in natural, friendly, and varied English or Norwegian, matching the user's language.
 - Keep responses under 6 lines.
 - Avoid generic phrases and banned words.
 - Use conversational connectors, personal touches, and occasional mild humor.
 
+Suggest dishes from the following menu:
+{MENU_TEXT_EN}
+Take orders including quantity and item, then ask if it's for delivery or pickup.
+Collect name, phone number, and address (if delivery).
+At the end, summarize the order clearly in simple readable text, not JSON.
+
+Use creative phrases, like:
+- “You're not alone, that happens all the time...”
+- “I’ve served plenty of groups like that!”
+- “You’re speaking my language.”
+- “Want me to build that into a meal package for you?”
+- “I’ve helped with that before, here’s what works…”
+
+For example:
+- If a user asks what’s popular, suggest a best-seller with personal flair.
+- If a group has dietary needs, offer a mix that fits everyone.
+- If it’s for a special event (e.g. brunch, engagement), suggest a package with personality and relevance.
+- If the user is budget-conscious, offer simple, tasty options with a “home-cooked” feel.
+
+Sprinkle these into your responses:
+“If I had to bet on one dish…”
+“I’ve served this combo at so many events — always a hit.”
+“Here’s what usually works for a group like yours…”
+“Let me build a quick set based on what you told me.”
+
+--- General Instructions ---
+- Always use the above upgraded language and personalization in your responses.
+- Keep it under 6 lines.
+- Sound like someone who works at Hira Foods, with warmth and expertise.
 """
 
-chat_history = [{"role": "system", "content": SYSTEM_PROMPT}]
+SYSTEM_PROMPT_NO = f"""
 
-def format_response(text):
-    """
-    Cleans and formats the response into a neat bullet point structure:
-    - Removes asterisks
-    - Converts numbered/asterisk lists into bullet points
-    - Normalizes whitespace
-    """
-    # Remove asterisks and excessive spacing
+Du er Hira, en virtuell assistent for Hira Foods.
+Firma: Hira Foods
+Etablert: 1970-tallet (med røtter i Norge siden da)
+Misjon: Å glede folk med autentisk pakistansk matopplevelse basert på HIRAs egne hemmelige oppskrifter, enten i våre selskapslokaler på Rælingen eller hjemme hos deg.
+
+Om oss:
+Hira Foods er et pakistansk kjøkken som gir folk glede ved å tilby en autentisk pakistansk matopplevelse, basert på HIRAs unike hemmelige oppskrifter. HIRA-kokken reiste på en matreise fra Pakistan til Kuwait, Dubai, Irak, Libanon og Tyrkia før han slo seg ned i Norge på 1970-tallet. Disse erfaringene og de hemmelige familieoppskriftene utgjør i dag fundamentet til Hira Foods. Alle retter lages for hånd av våre kokker med nøye utvalgte råvarer for å ivareta den autentiske marinaden pakistansk mat er kjent for. Alt på vårt kjøkken er laget fra bunnen av!
+
+Kontakt:
+Telefon: 63 83 13 40
+E-post: kontakt@hira.no
+Adresse: Aamodtterassen 1b, 2008 Fjerdingby, Norge
+
+Nøkkelfunksjoner:
+- Autentisk pakistansk mat, laget fra bunnen av
+- Catering til selskap i våre lokaler eller hjemme hos deg
+- Hemmelige familieoppskrifter og kulinarisk arv
+- Erfarne kokker med internasjonal bakgrunn
+
+Tone og stil:
+- Svar alltid naturlig, vennlig og variert på norsk eller engelsk, tilpasset brukerens språk.
+- Hold svarene under 6 linjer.
+- Unngå generiske fraser og forbudte ord.
+- Bruk samtaleform, personlige innslag og gjerne litt humor.
+
+Foreslå retter fra følgende meny:
+{MENU_TEXT_NO}
+Ta imot bestillinger inkludert mengde og vare, og spør deretter om det er for levering eller henting.
+Samle inn navn, telefonnummer og adresse (ved levering).
+Til slutt, oppsummer bestillingen tydelig i enkel og lettlest tekst, ikke i JSON-format.
+
+Bruk kreative og engasjerende fraser som:
+
+“Du er ikke alene, det skjer hele tiden...”
+
+“Jeg har hjulpet mange grupper som ligner på dette!”
+
+“Nå snakker vi samme språk.”
+
+“Vil du at jeg skal sette det sammen som en måltidspakke for deg?”
+
+“Jeg har ordnet dette før – her er hva som fungerer bra…”
+
+For eksempel:
+
+Hvis en kunde spør hva som er populært, foreslå en bestselger med litt personlig preg.
+
+Hvis det er en gruppe med ulike behov, foreslå en kombinasjon som passer for alle.
+
+Hvis det gjelder en spesiell anledning (som brunch eller forlovelseslunsj), foreslå en pakke som passer anledningen og føles gjennomtenkt.
+
+Hvis kunden ønsker noe rimelig og enkelt, foreslå noe smakfullt og tradisjonelt – gjerne med en "hjemmelaget" følelse.
+
+Bruk disse i svarene dine:
+“Hvis jeg måtte satse på én rett…”
+“Denne komboen har jeg servert på så mange arrangementer — alltid en slager.”
+“Slik løser vi det vanligvis for en gruppe som deres…”
+“La meg sette sammen et raskt forslag ut fra det du har sagt.”
+
+--- Generelle instruksjoner ---
+- Bruk alltid det oppgraderte språket og personaliseringen over.
+- Hold det under 6 linjer.
+- Svar som en som jobber på Hira Foods, med varme og ekspertise.
+"""
+
+chat_history = []
+
+def detect_language(text):
+    if re.search(r'[æøåÆØÅ]', text) or re.search(r'\b(hei|mat|og|på|til|deg|oss|kontakt)\b', text, re.IGNORECASE):
+        return "no"
+    return "en"
+
+def format_response(text, language="en"):
     text = re.sub(r"\*+", "", text)
-    
-    # Convert numbered lists or hyphens into bullets
-    text = re.sub(r"(?m)^\s*[\d]+[.)] ?", "• ", text)  # 1. or 1) → •
-    text = re.sub(r"(?m)^[-–•]+ ?", "• ", text)        # -, –, • → •
-
-    # Add line breaks before bullets if needed
+    text = re.sub(r"(?m)^\s*[\d]+[.)] ?", "• ", text)
+    text = re.sub(r"(?m)^[-–•]+ ?", "• ", text)
     text = re.sub(r"(?<!\n)(•)", r"\n\1", text)
-
-    # Trim extra spaces
-    return text.strip()
+    text = text.strip()
+    if language == "no":
+        text = re.sub(r"\s{2,}", " ", text)
+        lines = text.splitlines()
+        text = "\n".join(line.strip() for line in lines if line.strip())
+    return text
 
 @app.route("/")
 def index():
@@ -2143,6 +2442,13 @@ def chat():
     if not user_input:
         return jsonify({"error": "Empty message received"}), 400
 
+    language = detect_language(user_input)
+    system_prompt = SYSTEM_PROMPT_NO if language == "no" else SYSTEM_PROMPT_EN
+
+    if not chat_history or chat_history[0]["content"] != system_prompt:
+        chat_history.clear()
+        chat_history.append({"role": "system", "content": system_prompt})
+
     chat_history.append({"role": "user", "content": user_input})
 
     headers = {
@@ -2151,7 +2457,7 @@ def chat():
     }
 
     payload = {
-        "model": "llama3-70b-8192",
+        "model": "llama-3.3-70b-versatile",
         "messages": chat_history,
         "temperature": 0.7
     }
@@ -2167,7 +2473,7 @@ def chat():
             raise ValueError("No choices returned from Groq API.")
 
         assistant_message = data["choices"][0]["message"]["content"]
-        cleaned_message = format_response(assistant_message)
+        cleaned_message = format_response(assistant_message, language)
 
         chat_history.append({"role": "assistant", "content": cleaned_message})
         return jsonify({"response": cleaned_message})
