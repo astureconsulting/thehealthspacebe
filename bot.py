@@ -1871,6 +1871,7 @@ def format_response(text, language="en"):
 @app.route("/")
 def index():
     return send_from_directory(app.static_folder, "index.html")
+import logging
 
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -1881,10 +1882,9 @@ def chat():
     language = detect_language(user_input)
     system_prompt = SYSTEM_PROMPT_NO if language == "no" else SYSTEM_PROMPT_EN
 
-    if not chat_history or chat_history[0]["content"] != system_prompt:
-        chat_history.clear()
-        chat_history.append({"role": "system", "content": system_prompt})
-
+    # Use per-session or per-request chat history (see below)
+    chat_history = []
+    chat_history.append({"role": "system", "content": system_prompt})
     chat_history.append({"role": "user", "content": user_input})
 
     headers = {
@@ -1898,9 +1898,10 @@ def chat():
         "temperature": 0.7
     }
 
-    response = requests.post(GROQ_URL, headers=headers, json=payload)
-
     try:
+        response = requests.post(GROQ_URL, headers=headers, json=payload, timeout=10)
+        response.raise_for_status()  # Raises HTTPError for bad responses
+
         data = response.json()
         if "choices" not in data or not data["choices"]:
             raise ValueError("No choices returned from Groq API.")
@@ -1911,11 +1912,19 @@ def chat():
         chat_history.append({"role": "assistant", "content": cleaned_message})
         return jsonify({"response": cleaned_message})
 
+    except requests.RequestException as e:
+        logging.exception("Network error communicating with Groq API")
+        return jsonify({
+            "error": "Failed to communicate with Groq API",
+            "details": str(e)
+        }), 502
+
     except Exception as e:
+        logging.exception("Failed to process Groq response")
         return jsonify({
             "error": "Failed to process Groq response",
             "details": str(e),
-            "groq_response": response.text
+            "groq_response": getattr(response, 'text', None)
         }), 500
 
 if __name__ == '__main__':
