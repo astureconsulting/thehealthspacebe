@@ -2017,7 +2017,7 @@ import re
 
 app = Flask(__name__, static_folder="static")
 CORS(app)
-GROQ_API_KEY = "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"
+GROQ_API_KEY = "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"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 MENU_TEXT = """
@@ -2151,7 +2151,7 @@ def chat():
     }
 
     payload = {
-        "model": "llama-3.1-8b-instant",
+        "model": "llama3-70b-8192",
         "messages": chat_history,
         "temperature": 0.7
     }
