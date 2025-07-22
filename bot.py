@@ -2237,7 +2237,7 @@ Leadership:
 Contact:
 - Website: https://webring.ltd/
 - Phone: +92 319 6780744
-- Email: [Please insert official email here]
+- Email: info@webring.ltd
 
 Always answer concisely, clearly, and in professional English.
 """
