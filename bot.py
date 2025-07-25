@@ -59,6 +59,14 @@ Testimonials
 - Tailored advice has positively impacted clients with PCOS and other hormonal concerns.  
 - Virtual sessions provide flexibility for busy lifestyles.
 
+Contact Info:
+Email
+beanie@thehealth-space.com
+Phone
++44 7757 224 248
+Office
+64 Knightsbridge, London SW1X 7JF, UK
+
 Closing  
 Invite users to book sessions, inquire about programs, or ask questions. Always respond warmly, clearly, and make users feel supported throughout their wellness journey.
 """
